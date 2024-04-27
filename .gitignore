@@ -42,4 +42,4 @@ bin/
 .DS_Store
 /NPNA00143_00.pkg
 
-gradle.properties
+local.properties

@@ -29,6 +29,17 @@ publishing {
                 password = (project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN"))?.toString()
             }
         }
+        maven {
+            name = "silica.codes"
+            url = uri("https://silica.codes/api/packages/olebeck/maven")
+            credentials(HttpHeaderCredentials::class) {
+                name = "Authorization"
+                value = "token ${project.findProperty("silica.token").toString()}"
+            }
+            authentication {
+                create<HttpHeaderAuthentication>("header")
+            }
+        }
     }
     publications {
         register("mavenJava", MavenPublication::class) {
