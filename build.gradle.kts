@@ -1,3 +1,5 @@
+import java.util.*
+
 plugins {
     id("java")
     id("maven-publish")
@@ -19,14 +21,18 @@ tasks.test {
     useJUnitPlatform()
 }
 
+val properties = Properties().apply {
+    load(rootProject.file("local.properties").reader())
+}
+
 publishing {
     repositories {
         maven {
             name = "GithubPackages"
             url = uri("https://maven.pkg.github.com/olebeck/pkgextract")
             credentials {
-                username = (project.findProperty("gpr.user") ?: System.getenv("GITHUB_USERNAME"))?.toString()
-                password = (project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN"))?.toString()
+                username = (properties["gpr.user"] ?: System.getenv("GITHUB_USERNAME"))?.toString()
+                password = (properties["gpr.key"] ?: System.getenv("GITHUB_TOKEN"))?.toString()
             }
         }
         maven {
@@ -34,7 +40,7 @@ publishing {
             url = uri("https://silica.codes/api/packages/olebeck/maven")
             credentials(HttpHeaderCredentials::class) {
                 name = "Authorization"
-                value = "token ${project.findProperty("silica.token").toString()}"
+                value = "token ${properties["silica.token"]}"
             }
             authentication {
                 create<HttpHeaderAuthentication>("header")
