@@ -7,6 +7,7 @@ import java.io.*;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class Pkg {
     public static final int PKG_TYPE_VITA_APP = 0;
@@ -155,7 +156,8 @@ public class Pkg {
             items.add(new Item(itemName, dataOffset, dataSize, flags));
         }
 
-        items.sort((o1, o2) -> Math.toIntExact(o1.offset - o2.offset));
+        //noinspection Java8ListSort
+        Collections.sort(items, (o1, o2) -> Math.toIntExact(o1.offset - o2.offset));
 
         long currentOffset = (itemSize+itemOffset);
         for (Item item : items) {
