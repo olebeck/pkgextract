@@ -6,10 +6,16 @@ plugins {
 }
 
 group = "yuv.pink"
-version = "1.1-SNAPSHOT"
+version = "1.2"
 
 repositories {
     mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
 }
 
 dependencies {

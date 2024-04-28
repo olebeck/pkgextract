@@ -24,7 +24,8 @@ public class Pkg {
     public static void Read(InputStream inputStream, ItemHandler itemHandler) throws Exception {
         DataInputStream dataInputStream = new DataInputStream(inputStream);
 
-        String magic = new String(dataInputStream.readNBytes(4));
+        byte[] magic = new byte[4];
+        dataInputStream.readFully(magic);
         short revision = dataInputStream.readShort();
         short type = dataInputStream.readShort();
         int metaOffset = dataInputStream.readInt();
@@ -34,14 +35,19 @@ public class Pkg {
         long totalSize = dataInputStream.readLong();
         long encryptedOffset = dataInputStream.readLong();
         long encryptedSize = dataInputStream.readLong();
-        String contentID = new String(dataInputStream.readNBytes(36));
-        dataInputStream.skipNBytes(12);
-        byte[] digest = dataInputStream.readNBytes(16);
-        byte[] iv = dataInputStream.readNBytes(16);
-        dataInputStream.skipNBytes(103);
+        byte[] contentIDBytes = new byte[36];
+        dataInputStream.readFully(contentIDBytes);
+        String contentID = new String(contentIDBytes);
+        skipBytes(dataInputStream, 12);
+
+        byte[] digest = new byte[16];
+        dataInputStream.readFully(digest);
+        byte[] iv = new byte[16];
+        dataInputStream.readFully(iv);
+        skipBytes(dataInputStream, 103);
         int keyType = dataInputStream.readByte() & 7;
 
-        dataInputStream.skipNBytes(metaOffset-232);
+        skipBytes(dataInputStream, metaOffset-232);
 
         int contentType = 0;
         int itemOffset = 0;
@@ -71,9 +77,9 @@ public class Pkg {
                     break;
             }
             metaRead += elementSize + 8;
-            dataInputStream.skipNBytes(elementSize-readSize);
+            skipBytes(dataInputStream, elementSize-readSize);
         }
-        dataInputStream.skipNBytes(metaSize-metaRead);
+        skipBytes(dataInputStream, metaSize-metaRead);
 
         int pkgType = 0;
         switch (contentType) {
@@ -117,14 +123,16 @@ public class Pkg {
                 throw new Exception("Unknown key type");
         }
 
-        inputStream.skipNBytes(encryptedOffset-(metaOffset+metaSize));
+        skipBytes(dataInputStream, (int) (encryptedOffset-(metaOffset+metaSize)));
         Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
         cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(mainKey, "AES"), new IvParameterSpec(iv));
         CipherInputStream decryptedStream = new CipherInputStream(inputStream, cipher);
 
-        decryptedStream.skipNBytes(itemOffset);
-        byte[] itemData = decryptedStream.readNBytes(itemSize);
-        DataInputStream itemDataStream = new DataInputStream(new ByteArrayInputStream(itemData));
+        skipBytes(dataInputStream, itemOffset);
+        byte[] itemData = new byte[itemSize];
+        readBytes(decryptedStream, itemData);
+        InputStream itemStream = new ByteArrayInputStream(itemData);
+        DataInputStream itemDataStream = new DataInputStream(itemStream);
 
         ArrayList<Item> items = new ArrayList<>();
         for(int i = 0; i < itemCount; i++) {
@@ -132,13 +140,16 @@ public class Pkg {
             int nameSize = itemDataStream.readInt();
             long dataOffset = itemDataStream.readLong();
             long dataSize = itemDataStream.readLong();
-            byte[] flagData = itemDataStream.readNBytes(8);
+            byte[] flagData = new byte[8];
+            readBytes(itemDataStream, flagData);
             byte pspType = flagData[0];
             byte flags = flagData[3];
 
             itemDataStream.mark(itemSize);
-            itemDataStream.skipNBytes(nameOffset - (i+1)* 32L);
-            String itemName = new String(itemDataStream.readNBytes(nameSize));
+            skipBytes(itemDataStream, nameOffset - (i+1)* 32);
+            byte[] itemNameBytes = new byte[nameSize];
+            readBytes(itemDataStream, itemNameBytes);
+            String itemName = new String(itemNameBytes);
             itemDataStream.reset();
 
             items.add(new Item(itemName, dataOffset, dataSize, flags));
@@ -149,7 +160,7 @@ public class Pkg {
         long currentOffset = (itemSize+itemOffset);
         for (Item item : items) {
             long toSkip = item.offset - currentOffset;
-            decryptedStream.skipNBytes(toSkip);
+            skipBytes(decryptedStream, (int)(toSkip));
             itemHandler.call(item, decryptedStream);
             currentOffset += toSkip + item.size;
         }
@@ -162,6 +173,22 @@ public class Pkg {
             return cipher.doFinal(data);
         } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private static void skipBytes(InputStream stream, int n) throws IOException {
+        while(n > 0) {
+            n -= (int) stream.skip(n);
+        }
+    }
+
+    private static void readBytes(InputStream stream, byte[] out) throws  IOException {
+        int off = 0;
+        int n = out.length;
+        while(off < out.length) {
+            int read = stream.read(out, off, n);
+            n -= read;
+            off += read;
         }
     }
 }
