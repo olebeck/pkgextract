@@ -163,7 +163,9 @@ public class Pkg {
         for (Item item : items) {
             long toSkip = item.offset - currentOffset;
             skipBytes(decryptedStream, (int)(toSkip));
-            itemHandler.call(item, decryptedStream);
+            if(!itemHandler.call(item, decryptedStream)) {
+                break;
+            };
             currentOffset += toSkip + item.size;
         }
     }
