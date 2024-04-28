@@ -179,8 +179,9 @@ public class Pkg {
     }
 
     private static void skipBytes(InputStream stream, int n) throws IOException {
+        byte[] buf = new byte[512];
         while(n > 0) {
-            n -= (int) stream.skip(n);
+            n -= stream.read(buf, 0, Math.min(buf.length, n));
         }
     }
 
